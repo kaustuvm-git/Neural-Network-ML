@@ -9,11 +9,11 @@ from datetime import timedelta
 tf.__version__
 
 # Convolutional Layer 1.
-filter_size1 = 5          # Convolution filters are 5 x 5 pixels.
+filter_size1 = 3          # Convolution filters are 5 x 5 pixels.
 num_filters1 = 16         # There are 16 of these filters.
 
 # Convolutional Layer 2.
-filter_size2 = 5          # Convolution filters are 5 x 5 pixels.
+filter_size2 = 3          # Convolution filters are 5 x 5 pixels.
 num_filters2 = 36         # There are 36 of these filters.
 
 # Fully-connected layer.

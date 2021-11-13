@@ -69,7 +69,7 @@ def preprocess():
     return train_x, train_y, valid_x, valid_y, test_x, test_y
 
 # Parameters
-learning_rate = 0.0001
+learning_rate = 0.0003
 training_epochs = 100
 batch_size = 100
 

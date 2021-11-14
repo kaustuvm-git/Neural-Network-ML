@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.io import loadmat
 from math import sqrt
+import pandas as pd
 
 
 def initializeWeights(n_in, n_out):
@@ -25,9 +26,10 @@ def sigmoid(z):
     """# Notice that z can be a scalar, a vector or a matrix
     # return the sigmoid of input z"""
 
-    return  # your code here
+    return (1.0 / (1.0 + np.exp(-z)))
 
 
+featureIndices=[]
 def preprocess():
     """ Input:
      Although this function doesn't have any input, you are required to load
@@ -54,14 +56,88 @@ def preprocess():
 
     # Split the training sets into two sets of 50000 randomly sampled training examples and 10000 validation examples. 
     # Your code here.
-    
 
+    train_data, train_label, validation_data, validation_label = preprocess_train_data(mnist)
+    test_data, test_label = preprocess_test_data(mnist)
+    
     # Feature selection
-    # Your code here.
+    combined  = np.concatenate((train_data, validation_data),axis=0)
+    reference = combined[0,:]
+    boolean_value_columns = np.all(combined == reference, axis = 0)
+    
+    
+    featureCount = 0
+    global featureIndices
+    
+    for i in range(len(boolean_value_columns)):
+        if boolean_value_columns[i]==False:
+            featureCount += 1
+            featureIndices.append(i)
+    print("Total number of selected features : ", featureCount)
+    
+    final = combined[:,~boolean_value_columns]
+    tr_R = train_data.shape[0]
+    vl_R = validation_data.shape[0]
+    
+    train_data      = final[0:tr_R,:]
+    validation_data = final[tr_R:,:]
+    test_data = test_data[:,~boolean_value_columns]
 
     print('preprocess done')
-
     return train_data, train_label, validation_data, validation_label, test_data, test_label
+
+def preprocess_train_data(mnist):
+    """This is called from preprocess()
+    to process training data"""
+    
+    label_lst = []
+    for i in range(10):
+        idx = 'train'+ str(i)
+        train_mat = mnist[idx]
+        labels = np.full((train_mat.shape[0],1),i)
+        labeled_train_mat = np.concatenate((train_mat,labels),axis=1)
+        label_lst.append(labeled_train_mat)
+
+    all_labeled_train = np.concatenate((label_lst[0],label_lst[1],label_lst[2],
+                                        label_lst[3],label_lst[4],label_lst[5],
+                                        label_lst[6],label_lst[7],label_lst[8],
+                                        label_lst[9]), axis=0)
+    
+    np.random.shuffle(all_labeled_train)
+    
+    labeled_train = all_labeled_train[0:50000,:]
+    train_data    = (labeled_train[:,0:784])/255.0
+    train_label   = labeled_train[:,784]
+
+    labeled_validation = all_labeled_train[50000:60000,:]
+    validation_data    = (labeled_validation[:,0:784])/255.0
+    validation_label   = labeled_validation[:,784]
+    
+    return train_data, train_label, validation_data, validation_label
+
+def preprocess_test_data(mnist):
+    """This is called from preprocess()
+    to process test data"""
+        
+    label_lst = []
+    for i in range(10):
+        idx = 'test'+ str(i)
+        test_mat = mnist[idx]
+        labels = np.full((test_mat.shape[0],1),i)
+        labeled_test_mat = np.concatenate((test_mat,labels),axis=1)
+        label_lst.append(labeled_test_mat)
+
+    all_labeled_test = np.concatenate((label_lst[0],label_lst[1],label_lst[2],
+                                       label_lst[3],label_lst[4],label_lst[5],
+                                       label_lst[6],label_lst[7],label_lst[8],
+                                       label_lst[9]), axis=0)
+
+    np.random.shuffle(all_labeled_test)
+    
+    test_data    = (all_labeled_test[:,0:784])/255.0
+    test_label   = all_labeled_test[:,784]
+    
+    return test_data, test_label
 
 
 def nnObjFunction(params, *args):
@@ -109,18 +185,45 @@ def nnObjFunction(params, *args):
     obj_val = 0
 
     # Your code here
-    #
-    #
-    #
-    #
-    #
-
+    shape_ip=training_data.shape   
+    n_rows_ip=shape_ip[0]    
+    biases_ip=np.full((n_rows_ip,1),1)    
+    aj=np.dot(np.concatenate((biases_ip,training_data),axis=1),np.transpose(w1))             
+    zj=sigmoid(aj)  
+   
+    #Hidden
+    shape_hidden=zj.shape
+    n_rows_hidden=shape_hidden[0]   
+    biases_hidden=np.full((n_rows_hidden,1),1)
+    m=np.concatenate((biases_hidden,zj),axis=1)
+    bl=np.dot(m,np.transpose(w2))  
+    ol=sigmoid(bl)
+    
+    #ERROR   
+    yl=np.zeros((n_rows_ip,n_class))
+   
+    for i in range(n_rows_ip):
+        yl[i,train_label[i]]=1
+   
+    #Error function            
+    error=np.sum(np.multiply(yl,np.log(ol))+np.multiply((1-yl),np.log(1-ol)))/(-1*n_rows_ip)  
+        
+    #Gradient           
+    gradient2=np.dot(np.transpose((ol-yl)),m)  
+    gradient1=np.dot(np.transpose(np.dot((ol-yl),w2)*(m*(1-m))),np.concatenate((biases_ip,training_data),axis=1))         
+    gradient1=gradient1[1:,:]
+    
+    #Regularization            
+    obj_val=error+(lambdaval/(2*n_rows_ip))*(np.sum(w1**2)+np.sum(w2**2))    
+    gradient1reg = (gradient1 + lambdaval * w1)/n_rows_ip
+    gradient2reg = (gradient2 + lambdaval * w2)/n_rows_ip
+    obj_grad = np.concatenate((gradient1reg.flatten(), gradient2reg.flatten()), 0)
 
 
     # Make sure you reshape the gradient matrices to a 1D array. for instance if your gradient matrices are grad_w1 and grad_w2
     # you would use code similar to the one below to create a flat array
     # obj_grad = np.concatenate((grad_w1.flatten(), grad_w2.flatten()),0)
-    obj_grad = np.array([])
+    # obj_grad = np.array([])
 
     return (obj_val, obj_grad)
 
@@ -143,7 +246,24 @@ def nnPredict(w1, w2, data):
     % label: a column vector of predicted labels"""
 
     labels = np.array([])
+    
     # Your code here
+    n = data.shape[0]
+    biases1 = np.full((n,1),1)
+    training_data = np.concatenate((biases1, data), axis=1)
+
+    aj = np.dot(training_data, w1.T)
+    zj = sigmoid(aj)
+    
+    m = zj.shape[0]
+    
+    biases2 = np.full((m,1), 1)
+    zj = np.concatenate((biases2, zj), axis=1)
+
+    bl = np.dot(zj, w2.T)
+    ol = sigmoid(bl)
+
+    labels = np.argmax(ol, axis=1)
 
     return labels
 
@@ -171,7 +291,7 @@ initial_w2 = initializeWeights(n_hidden, n_class)
 initialWeights = np.concatenate((initial_w1.flatten(), initial_w2.flatten()), 0)
 
 # set the regularization hyper-parameter
-lambdaval = 0
+lambdaval = 0.7
 
 args = (n_input, n_hidden, n_class, train_data, train_label, lambdaval)
 
